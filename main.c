@@ -25,43 +25,92 @@ struct termios oldt,newt;
 struct Ball {	
 	int x;
 	int y;
-	int dx;
-	int dy;
-	int ddx;
-	int ddy;
-}ball = {0,0,0,0,0,0};
+	int prevX;
+	int prevY;
+}ball = {0,0,0,0};
 
-char userInput;
+char userInput = -1; 
+char menuInput = -1;
+char ballInput = 0;
 char map[mapSizeX][mapSizeY]; 
 
 int main()
 {
-	/*	\e[2J -clear screen 
-		\e[H -move cursor to top left	 */
+	fillMap();
+	drawMenu();
+	read(STDIN_FILENO,&menuInput,1); 
+	switch(menuInput)
+		{
+			case('q'):
+				exit(0);
+			case('s'):
+				break;
+		}menuInput = -1;
 
 	setNonCanonicalMode();
-	fillMap();
-	int ballPrevX;
-	int ballPrevY;	
-
-	while(1)
+	while(userInput != 'q')
 	{
-	clearScreen();
-	read(STDIN_FILENO,&userInput,1);
-	//drawMenu();
-	drawPhysicsSim();
-	updatePhysicsSim(); 
+		clearScreen();
+		drawPhysicsSim();
+		updatePhysicsSim(); 
 
+		read(STDIN_FILENO,&userInput,1); 
+		sleep(0.03);
+	}
+	setCanonicalMode();
+	return 0;
+}
 
-	sleep(0.03);
-	if(userInput == 'q') break;
-	
+void clearScreen()
+{
+/*	\e[2J -clear screen 
+		\e[H -move cursor to top left	 */
+	printf("\e[2J\e[H"); 
+}
+
+void fillMap()
+{
+	for(int i = 0; i < mapSizeX; i++)
+	{
+		for(int j = 0; j < mapSizeY; j++)
+		{
+			map[i][j] = '.';
+		}	
+	}
+}
+
+void drawMenu()
+{
+	printf("Welcome to the physics simulation!\n"); 
+	printf("Press q to quit!\n");
+	printf("Press s to start the simulation\n");	
+}	
+
+void drawPhysicsSim()
+{
+	for(int i = 0; i < mapSizeX; i++)
+	{
+		for(int j = 0; j < mapSizeY; j++)
+		{
+			printf("%c", map[i][j]);
+		}
+		printf("\n");
+	}
+//draw screen with green grass and blue air
+//draw cannon on bottom left of screen
+//show angle in degrees 
+	//change angle with up and down arrow keys
+//shoot cannon with enter
+}
+
+void updatePhysicsSim()
+{
 	//drawing ballZ
 	map[ball.x][ball.y] = '@';
 	
 	//store previous location to clear
-	ballPrevX = ball.x;
-	ballPrevY = ball.y;	
+	ball.prevX = ball.x;
+	ball.prevY = ball.y;	
 	switch(userInput)
 	{
 		case('j'): //down 
@@ -78,63 +127,9 @@ int main()
 			break;
 		default:
 			break;
-	}
-	//reset userInput
-	userInput = '1';
+	} userInput = -1;
 	//reset map
-	if(ball.x != ballPrevX || ball.y != ballPrevY)	map[ballPrevX][ballPrevY] = '.';
-	}
-	setCanonicalMode();
-	return 0;
-}
-
-void clearScreen()
-{
-	printf("\e[2J\e[H"); 
-}
-
-void fillMap()
-{
-	for(int i = 0; i < mapSizeX; i++)
-	{
-		for(int j = 0; j < mapSizeY; j++)
-		{
-			map[i][j] = '.';
-		}	
-	}
-
-}
-
-void drawMenu(){
-	/*	clear screen	*/
-	printf("Welcome to the physics simulation!\n"); 
-	printf("Press q to quit!\n");
-	printf("Press s to start the simulation\n");
-}
-
-void drawPhysicsSim()
-{
-	for(int i = 0; i < mapSizeX; i++)
-	{
-		for(int j = 0; j < mapSizeY; j++)
-		{
-			printf("%c", map[i][j]);
-		}
-		printf("\n");
-	}
-
-//draw screen with green grass and blue air
-//draw cannon on bottom left of screen
-//show angle in degrees 
-	//change angle with up and down arrow keys
-//shoot cannon with enter
-
-//show ball as @ sign 
-	//updatePhysicsSim() will calculate next ball location
-}
-
-void updatePhysicsSim()
-{
+	if(ball.x != ball.prevX || ball.y != ball.prevY) map[ball.prevX][ball.prevY] = '.';
 }
 
 void setNonCanonicalMode()
