@@ -37,6 +37,7 @@ char map[mapSizeX][mapSizeY];
 int main()
 {
 	fillMap();
+	clearScreen();
 	drawMenu();
 	read(STDIN_FILENO,&menuInput,1); 
 	switch(menuInput)
@@ -57,6 +58,7 @@ int main()
 		read(STDIN_FILENO,&userInput,1); 
 		sleep(0.03);
 	}
+	clearScreen();
 	setCanonicalMode();
 	return 0;
 }
