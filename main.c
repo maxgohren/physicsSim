@@ -2,17 +2,11 @@
 #include <stdlib.h> 
 #include <termios.h> 
 #include <unistd.h>
+#include <math.h>
 
 #define mapSizeX 25
 #define mapSizeY 50
 
-void setNonCanonicalMode();
-void setCanonicalMode();
-void drawMenu();
-void clearScreen();
-void drawPhysicsSim();
-void updatePhysicsSim();
-void fillMap();
 
 struct termios oldt,newt;
 
@@ -27,16 +21,35 @@ struct Ball {
 	int y;
 	int prevX;
 	int prevY;
-}ball = {0,0,0,0};
+	int initialVelocity;
+	int angle; 
+}ball = {0, 0, 0,0, 10, 45};
 
 char userInput = -1; 
 char menuInput = -1;
 char ballInput = 0;
 char map[mapSizeX][mapSizeY]; 
+int simulationTime = 0;
+
+
+void setNonCanonicalMode();
+void setCanonicalMode();
+void drawMenu();
+void clearScreen();
+void drawPhysicsSim();
+void updatePhysicsSim();
+void fillMap();
+void userMoveBall();
+
+void setMapXY(int x, int y, char c) {map[y][x] = c;}
+void setBallPos(int x,int y) {map[y][x] = '@';}
 
 int main()
 {
+	//init
 	fillMap();
+
+	//menu screen
 	clearScreen();
 	drawMenu();
 	read(STDIN_FILENO,&menuInput,1); 
@@ -48,15 +61,22 @@ int main()
 				break;
 		}menuInput = -1;
 
+	//physics screen
 	setNonCanonicalMode();
 	while(userInput != 'q')
 	{
 		clearScreen();
 		drawPhysicsSim();
-		updatePhysicsSim(); 
 
 		read(STDIN_FILENO,&userInput,1); 
-		sleep(0.03);
+
+		//simulation time is currently tied to framerate
+		simulationTime++;
+		printf("The current simulation time is: %d\n", simulationTime);
+		//wait for user to view simulation and update for next frame
+		sleep(1);
+		updatePhysicsSim(); 
+		
 	}
 	clearScreen();
 	setCanonicalMode();
@@ -79,18 +99,31 @@ void fillMap()
 			map[i][j] = '.';
 		}	
 	}
+//draw screen with green grass and blue air
+//draw cannon on bottom left of screen
+//show angle in degrees 
+	//change angle with up and down arrow keys
+
+// ---->> along bottom edge for "Time" axis
+// ---->> along left edge for "Height" axis
+
 }
 
 void drawMenu()
 {
 	printf("Welcome to the physics simulation!\n"); 
-	printf("Press q to quit!\n");
-	printf("Press s to start the simulation\n");	
-}	
+	printf("Please choose an option:\n\n");
+	printf("s -> start the simulation\n");	
+	printf("q -> quit\n");	
+}
+
+
 
 void drawPhysicsSim()
 {
-	for(int i = 0; i < mapSizeX; i++)
+	setBallPos(ball.x, ball.y);
+
+	for(int i = mapSizeX - 1; i >= 0; i--)
 	{
 		for(int j = 0; j < mapSizeY; j++)
 		{
@@ -98,22 +131,54 @@ void drawPhysicsSim()
 		}
 		printf("\n");
 	}
-//draw screen with green grass and blue air
-//draw cannon on bottom left of screen
-//show angle in degrees 
-	//change angle with up and down arrow keys
-//shoot cannon with enter
 }
 
 void updatePhysicsSim()
 {
 	//drawing ballZ
-	map[ball.x][ball.y] = '@';
 	
 	//store previous location to clear
 	ball.prevX = ball.x;
 	ball.prevY = ball.y;	
+	/*	
+	//calculate next ball position based on velocity and angle
+	int dx, dy, vx, vy, t1, t2;
+	
+	t1 = simulationTime;
+	t2 = simulationTime + 1;
+	//vx = v * sin(cannon.angle); // needs to be converted to degrees for percentage
+	//vy = v * cos(cannon.angle);
+
+	vx = ball.initialVelocity / 2;
+	vy = ball.initialVelocity / 2;
+	
+	dx = vx * (t2 - t1);
+	dy = vy * (t2 - t1);
+
+	//store new position in map		
+	*/ 
+	//move ball diagonally across the screen
+	
+	static int diag = 0;	
+	if(diag ==0)
+	{
+		ball.x++;
+		diag = 1;
+	}
+	else
+	{
+		ball.y++;
+		diag = 0;
+	}
+	//clear old ball position
+	if(ball.x != ball.prevX || ball.y != ball.prevY) setMapXY(ball.prevX, ball.prevY, '.');
+	
+}
+
+void userMoveBall()
+{
 	switch(userInput)
+
 	{
 		case('j'): //down 
 			if(ball.x < mapSizeX) ball.x += 1;
@@ -129,11 +194,9 @@ void updatePhysicsSim()
 			break;
 		default:
 			break;
-	} userInput = -1;
-	//reset map
-	if(ball.x != ball.prevX || ball.y != ball.prevY) map[ball.prevX][ball.prevY] = '.';
+	}	
+	userInput = -1;
 }
-
 void setNonCanonicalMode()
 {
 	// Save old terminal settings
