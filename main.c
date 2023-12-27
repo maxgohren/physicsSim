@@ -6,7 +6,7 @@
 
 #define mapSizeX 25
 #define mapSizeY 50
-#define FRAMERATE 3
+#define FRAMERATE 60
 
 struct termios oldt,newt;
 
@@ -19,15 +19,14 @@ struct Ball {
 	double vy;
 	double initialVelocity;
 	double angle; 
-}ball = {0, 0, 0, 0, 0, 0, 12/FRAMERATE, 45};
+}ball = {0, 0, 0, 0, 0, 0, 20, 45};
 
 char userInput = -1; 
 char menuInput = -1;
 char ballInput = 0;
 char map[mapSizeX][mapSizeY]; 
 int simulationTime = 0;
-double gravity = -5 / FRAMERATE;
-int count = 0;
+double gravity = -9.81;
 
 void setNonCanonicalMode();
 void setCanonicalMode();
@@ -52,6 +51,8 @@ void setBallPos(double x,double y)
 
 int main()
 {
+	int i = 0;
+	int count = 0;
 	init(); 
 
 	//menu screen
@@ -70,6 +71,7 @@ int main()
 	setNonCanonicalMode();
 	while(userInput != 'q')
 	{
+	
 		clearScreen();
 		drawPhysicsSim();
 		read(STDIN_FILENO,&userInput,1); 
@@ -78,7 +80,8 @@ int main()
 		sleep(1/FRAMERATE);
 
 		updatePhysicsSim();
-		simulationTime++;
+		count++;
+		if(count = FRAMERATE) simulationTime++;
 	}
 	clearScreen();
 	setCanonicalMode();
@@ -106,6 +109,7 @@ void init()
 	//calculate initial velocity components	
 	ball.vx = ball.initialVelocity * cos( (double) ball.angle) / FRAMERATE;
 	ball.vy = ball.initialVelocity * sin( (double) ball.angle) / FRAMERATE;
+
 //draw screen with green grass and blue air
 //draw cannon on bottom left of screen
 //show angle in degrees 
@@ -130,7 +134,7 @@ void drawPhysicsSim()
 {	
 	setBallPos(ball.x, ball.y);
 
-	//printing rows so that 0 -> mapSizeX row is printed (similar to x increasing upwards)
+	//x (map array row) increases upwards instead of downwards
 	for(int i = mapSizeX - 1; i >= 0; i--)
 	{
 		for(int j = 0; j < mapSizeY; j++)
@@ -140,38 +144,37 @@ void drawPhysicsSim()
 		printf("\n");
 	}
 	
-	printf("Simulation Time: %d seconds \n", simulationTime/FRAMERATE);
+	printf("Simulation Time: %d seconds \n", simulationTime);	
+	printf("Framerate: %d FPS \n", FRAMERATE);
+	
 	printf("Cannon Angle: %g degrees\n", ball.angle);
 	printf("Cannon Velocity: %g m/s\n", ball.initialVelocity);
 	printf("Ball Position (x,y) = (%g m, %g m)\n", ball.y, ball.x);
 	printf("Ball Velocity (x,y) = (%g m, %g m)\n", ball.vy, ball.vx);
 	printf("Gravity: %g m/s\n", gravity);
-
+	
 	printf("\n");
 }
 
 void updatePhysicsSim()
 {
+	
 	//update velocities due to accelerations
-	//ball.vx = air resistance
-	ball.vy += gravity / FRAMERATE;
+	ball.vx; // + air resistance
+	ball.vy += gravity  / (FRAMERATE * FRAMERATE);
 
 	//store previous location to clear
 	ball.prevX = ball.x;
 	ball.prevY = ball.y;	
 	//update ball position
-	ball.x += ball.vx / FRAMERATE; 
-	ball.y += ball.vy / FRAMERATE;
+	ball.x += ball.vx;
+	ball.y += ball.vy;
 
 	//clear old ball position
 	if(ball.x != ball.prevX || ball.y != ball.prevY) setMapXY(ball.prevX, ball.prevY, '.');
 	
-}
-
-void userMoveBall()
-{
+} void userMoveBall() {
 	switch(userInput)
-
 	{
 		case('j'): //down 
 			if(ball.x < mapSizeX) ball.x += 1;
