@@ -1,36 +1,35 @@
 #include <stdio.h>
-#include <stdlib.h> 
-#include <termios.h> 
+#include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <termios.h>
 
-#define mapSizeX 25
-#define mapSizeY 50
-
+// x y coord system is wack with row-col formula for arrays, works with this ratio
+#define mapSizeY 70
+#define mapSizeX 40
+#define FRAMERATE 60
 
 struct termios oldt,newt;
 
-// struct Cannon {
-// 	int angle;
-//	int startVelocity; //split into x and y?
-//	int cannonBallMass;
-//}cannon;
-
 struct Ball {	
-	int x;
-	int y;
-	int prevX;
-	int prevY;
-	int initialVelocity;
-	int angle; 
-}ball = {0, 0, 0,0, 10, 45};
+	double x;
+	double y;
+	double prevX;
+	double prevY;
+	double vx;
+	double vy;
+	double initialVelocity;
+	double angle; 
+	int collision;
+};
 
 char userInput = -1; 
 char menuInput = -1;
 char ballInput = 0;
+//map[row = y][column = x] 
 char map[mapSizeX][mapSizeY]; 
 int simulationTime = 0;
-
+double gravity = -9.81;
 
 void setNonCanonicalMode();
 void setCanonicalMode();
@@ -40,19 +39,24 @@ void drawPhysicsSim();
 void updatePhysicsSim();
 void fillMap();
 void userMoveBall();
+int isOutOfBounds();
+void setMapXY(double x, double y, char c);
+void setBallPos(double x,double y);
 
-void setMapXY(int x, int y, char c) {map[y][x] = c;}
-void setBallPos(int x,int y) {map[y][x] = '@';}
 
+
+
+struct Ball ball = {1, 1, 0, 0, 0, 0, 20, 45, 0};
 int main()
 {
-	//init
-	fillMap();
+	int i = 0;
+	int count = 0;
+	init(); 
 
 	//menu screen
 	clearScreen();
 	drawMenu();
-	read(STDIN_FILENO,&menuInput,1); 
+	read(STDIN_FILENO, &menuInput,1); 
 	switch(menuInput)
 		{
 			case('q'):
@@ -67,22 +71,49 @@ int main()
 	{
 		clearScreen();
 		drawPhysicsSim();
+		read(STDIN_FILENO, &userInput,1); 
 
-		read(STDIN_FILENO,&userInput,1); 
-
-		//simulation time is currently tied to framerate
-		simulationTime++;
-		printf("The current simulation time is: %d\n", simulationTime);
 		//wait for user to view simulation and update for next frame
-		sleep(1);
-		updatePhysicsSim(); 
-		
+		sleep(1/FRAMERATE);
+
+		updatePhysicsSim();
+		count++;
+		if(count == FRAMERATE) 
+		{
+			simulationTime++;
+			count = 0;
+		}
 	}
 	clearScreen();
 	setCanonicalMode();
 	return 0;
 }
 
+/* ---- BALL.H ----- */
+//maybe map.h for bounds?
+int isOutOfBounds(int x, int y)
+{
+	if(x < mapSizeX && x >= 0 && y < mapSizeY && y >= 0)
+		return 0;
+	else
+		return 1;
+}
+
+void setMapXY(double x, double y, char c)
+{
+	if(!isOutOfBounds(x, y))
+		map[(int)y][(int)x] = c;
+}
+
+void setBallPos(double x,double y) 
+{
+	if(!isOutOfBounds(ball.x, ball.y))
+		map[(int)y][(int)x] = '@';
+}
+//check ball boundary
+	//set ball.collision = 1;
+
+/* ---- END BALL.H ---- */
 void clearScreen()
 {
 /*	\e[2J -clear screen 
@@ -90,15 +121,41 @@ void clearScreen()
 	printf("\e[2J\e[H"); 
 }
 
-void fillMap()
+void init()
 {
-	for(int i = 0; i < mapSizeX; i++)
+	int i = 0;
+	
+	//create default map with dots
+	for(i = 0; i < mapSizeX; i++)
 	{
 		for(int j = 0; j < mapSizeY; j++)
 		{
 			map[i][j] = '.';
 		}	
 	}
+	
+	//create map boundary markers in Y Axis
+	for(i = 0; i < mapSizeX; i++)
+	{
+		if(i % 5 == 0 || i == 0)
+			map[i][0] = i;
+		else
+			map[i][0] = '|';
+	}
+	//create map boundary markers in X Axis
+	for(i = 0; i < mapSizeY; i++)
+	{
+		if(i % 5 == 0 || i == 0)
+		
+			map[0][i] = i;
+		else
+			map[0][i] = '-';
+			
+	}
+	//calculate initial velocity components	
+	ball.vx = ball.initialVelocity * cos( (double) ball.angle) / FRAMERATE;
+	ball.vy = ball.initialVelocity * sin( (double) ball.angle) / FRAMERATE;
+
 //draw screen with green grass and blue air
 //draw cannon on bottom left of screen
 //show angle in degrees 
@@ -113,72 +170,77 @@ void drawMenu()
 {
 	printf("Welcome to the physics simulation!\n"); 
 	printf("Please choose an option:\n\n");
-	printf("s -> start the simulation\n");	
-	printf("q -> quit\n");	
+	printf("	s -> start the simulation\n");	
+	printf("	q -> quit\n");	
 }
 
 
 
 void drawPhysicsSim()
-{
+{	
 	setBallPos(ball.x, ball.y);
 
+	//x (map array row) increases upwards instead of downwards
 	for(int i = mapSizeX - 1; i >= 0; i--)
 	{
 		for(int j = 0; j < mapSizeY; j++)
 		{
-			printf("%c", map[i][j]);
+			//X axis numbers
+			if(j == 0 && i % 5 == 0)
+				printf("%d", map[i][j]);
+			//Y axis numbers
+			else if(i == 0 && j % 5 == 0)
+				printf("%d", map[i][j]);
+			//print (0,0)
+			else if(i == 0 && j == 0)
+				printf("%c", map[i][j]);
+			else
+				printf("%c", map[i][j]);
 		}
 		printf("\n");
 	}
+	
+	printf("Simulation Time: %d seconds \n", simulationTime);	
+	printf("Framerate: %d FPS \n", FRAMERATE);
+	
+	printf("Cannon Angle: %g degrees\n", ball.angle);
+	printf("Cannon Velocity: %g m/s\n", ball.initialVelocity);
+	printf("Ball Position (x,y) = (%g m, %g m)\n", ball.x, ball.y);
+	printf("Ball Velocity (x,y) = (%g m/s, %g m/s)\n", ball.y, ball.vy);
+	printf("Gravity: %g m/s\n", gravity);
+	
+	printf("\n");
 }
 
 void updatePhysicsSim()
 {
-	//drawing ballZ
-	
+	if(ball.collision == 1) 
+		setBallPos(ball.prevX, ball.prevY);
+	else
+	{
+	//update velocities due to accelerations
+	ball.vx; // + air resistance
+	ball.vy += gravity  / (FRAMERATE * FRAMERATE);
+
 	//store previous location to clear
 	ball.prevX = ball.x;
 	ball.prevY = ball.y;	
-	/*	
-	//calculate next ball position based on velocity and angle
-	int dx, dy, vx, vy, t1, t2;
-	
-	t1 = simulationTime;
-	t2 = simulationTime + 1;
-	//vx = v * sin(cannon.angle); // needs to be converted to degrees for percentage
-	//vy = v * cos(cannon.angle);
+	//update ball position
+	ball.x += ball.vx;
+	ball.y += ball.vy;
 
-	vx = ball.initialVelocity / 2;
-	vy = ball.initialVelocity / 2;
-	
-	dx = vx * (t2 - t1);
-	dy = vy * (t2 - t1);
-
-	//store new position in map		
-	*/ 
-	//move ball diagonally across the screen
-	
-	static int diag = 0;	
-	if(diag ==0)
-	{
-		ball.x++;
-		diag = 1;
-	}
-	else
-	{
-		ball.y++;
-		diag = 0;
-	}
 	//clear old ball position
-	if(ball.x != ball.prevX || ball.y != ball.prevY) setMapXY(ball.prevX, ball.prevY, '.');
+	if(ball.x != ball.prevX || ball.y != ball.prevY)
+		setMapXY(ball.prevX, ball.prevY, '.');
 	
-}
+	if(isOutOfBounds(ball.x, ball.y))
+		ball.collision = 1;
+	}
+		
+} 
 
-void userMoveBall()
-{
+void userMoveBall() {
 	switch(userInput)
-
 	{
 		case('j'): //down 
 			if(ball.x < mapSizeX) ball.x += 1;
