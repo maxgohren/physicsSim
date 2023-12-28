@@ -4,9 +4,9 @@
 #include <math.h>
 #include <termios.h>
 
-//due to vertical line height vs character space ( x and y), 2x = y
-#define mapSizeX 30
-#define mapSizeY 60
+// x y coord system is wack with row-col formula for arrays, works with this ratio
+#define mapSizeY 70
+#define mapSizeX 40
 #define FRAMERATE 60
 
 struct termios oldt,newt;
@@ -20,11 +20,13 @@ struct Ball {
 	double vy;
 	double initialVelocity;
 	double angle; 
-}ball = {1, 1, 0, 0, 0, 0, 20, 45};
+	int collision;
+};
 
 char userInput = -1; 
 char menuInput = -1;
 char ballInput = 0;
+//map[row = y][column = x] 
 char map[mapSizeX][mapSizeY]; 
 int simulationTime = 0;
 double gravity = -9.81;
@@ -37,21 +39,14 @@ void drawPhysicsSim();
 void updatePhysicsSim();
 void fillMap();
 void userMoveBall();
+int isOutOfBounds();
+void setMapXY(double x, double y, char c);
+void setBallPos(double x,double y);
 
-void setMapXY(double x, double y, char c)
-{
-	if(ball.x < mapSizeX && ball.x >= 0 && ball.y < mapSizeY && ball.x >= 0)
-		map[(int)y][(int)x] = c;
-}
 
-void setBallPos(double x,double y) 
-{
-	if(ball.x < mapSizeX && ball.x >= 0 && ball.y < mapSizeY && ball.x >= 0)
-		map[(int)y][(int)x] = '@';
-}
-//check ball boundary
-	//set ball.collision = 1;
 
+
+struct Ball ball = {1, 1, 0, 0, 0, 0, 20, 45, 0};
 int main()
 {
 	int i = 0;
@@ -61,7 +56,7 @@ int main()
 	//menu screen
 	clearScreen();
 	drawMenu();
-	read(STDIN_FILENO,&menuInput,1); 
+	read(STDIN_FILENO, &menuInput,1); 
 	switch(menuInput)
 		{
 			case('q'):
@@ -74,10 +69,9 @@ int main()
 	setNonCanonicalMode();
 	while(userInput != 'q')
 	{
-	
 		clearScreen();
 		drawPhysicsSim();
-		read(STDIN_FILENO,&userInput,1); 
+		read(STDIN_FILENO, &userInput,1); 
 
 		//wait for user to view simulation and update for next frame
 		sleep(1/FRAMERATE);
@@ -95,6 +89,31 @@ int main()
 	return 0;
 }
 
+/* ---- BALL.H ----- */
+//maybe map.h for bounds?
+int isOutOfBounds(int x, int y)
+{
+	if(x < mapSizeX && x >= 0 && y < mapSizeY && y >= 0)
+		return 0;
+	else
+		return 1;
+}
+
+void setMapXY(double x, double y, char c)
+{
+	if(!isOutOfBounds(x, y))
+		map[(int)y][(int)x] = c;
+}
+
+void setBallPos(double x,double y) 
+{
+	if(!isOutOfBounds(ball.x, ball.y))
+		map[(int)y][(int)x] = '@';
+}
+//check ball boundary
+	//set ball.collision = 1;
+
+/* ---- END BALL.H ---- */
 void clearScreen()
 {
 /*	\e[2J -clear screen 
@@ -133,7 +152,6 @@ void init()
 			map[0][i] = '-';
 			
 	}
-	map[0][0] == 'G';
 	//calculate initial velocity components	
 	ball.vx = ball.initialVelocity * cos( (double) ball.angle) / FRAMERATE;
 	ball.vy = ball.initialVelocity * sin( (double) ball.angle) / FRAMERATE;
@@ -187,8 +205,8 @@ void drawPhysicsSim()
 	
 	printf("Cannon Angle: %g degrees\n", ball.angle);
 	printf("Cannon Velocity: %g m/s\n", ball.initialVelocity);
-	printf("Ball Position (x,y) = (%g m, %g m)\n", ball.y, ball.x);
-	printf("Ball Velocity (x,y) = (%g m, %g m)\n", ball.vy, ball.vx);
+	printf("Ball Position (x,y) = (%g m, %g m)\n", ball.x, ball.y);
+	printf("Ball Velocity (x,y) = (%g m/s, %g m/s)\n", ball.y, ball.vy);
 	printf("Gravity: %g m/s\n", gravity);
 	
 	printf("\n");
@@ -196,7 +214,10 @@ void drawPhysicsSim()
 
 void updatePhysicsSim()
 {
-	
+	if(ball.collision == 1) 
+		setBallPos(ball.prevX, ball.prevY);
+	else
+	{
 	//update velocities due to accelerations
 	ball.vx; // + air resistance
 	ball.vy += gravity  / (FRAMERATE * FRAMERATE);
@@ -212,7 +233,13 @@ void updatePhysicsSim()
 	if(ball.x != ball.prevX || ball.y != ball.prevY)
 		setMapXY(ball.prevX, ball.prevY, '.');
 	
-} void userMoveBall() {
+	if(isOutOfBounds(ball.x, ball.y))
+		ball.collision = 1;
+	}
+		
+} 
+
+void userMoveBall() {
 	switch(userInput)
 	{
 		case('j'): //down 
