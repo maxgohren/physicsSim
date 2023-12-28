@@ -4,8 +4,9 @@
 #include <math.h>
 #include <termios.h>
 
-#define mapSizeX 25
-#define mapSizeY 50
+//due to vertical line height vs character space ( x and y), 2x = y
+#define mapSizeX 30
+#define mapSizeY 60
 #define FRAMERATE 60
 
 struct termios oldt,newt;
@@ -19,7 +20,7 @@ struct Ball {
 	double vy;
 	double initialVelocity;
 	double angle; 
-}ball = {0, 0, 0, 0, 0, 0, 20, 45};
+}ball = {1, 1, 0, 0, 0, 0, 20, 45};
 
 char userInput = -1; 
 char menuInput = -1;
@@ -48,6 +49,8 @@ void setBallPos(double x,double y)
 	if(ball.x < mapSizeX && ball.x >= 0 && ball.y < mapSizeY && ball.x >= 0)
 		map[(int)y][(int)x] = '@';
 }
+//check ball boundary
+	//set ball.collision = 1;
 
 int main()
 {
@@ -81,7 +84,11 @@ int main()
 
 		updatePhysicsSim();
 		count++;
-		if(count = FRAMERATE) simulationTime++;
+		if(count == FRAMERATE) 
+		{
+			simulationTime++;
+			count = 0;
+		}
 	}
 	clearScreen();
 	setCanonicalMode();
@@ -97,8 +104,10 @@ void clearScreen()
 
 void init()
 {
-	//fill map with dots
-	for(int i = 0; i < mapSizeX; i++)
+	int i = 0;
+	
+	//create default map with dots
+	for(i = 0; i < mapSizeX; i++)
 	{
 		for(int j = 0; j < mapSizeY; j++)
 		{
@@ -106,6 +115,25 @@ void init()
 		}	
 	}
 	
+	//create map boundary markers in Y Axis
+	for(i = 0; i < mapSizeX; i++)
+	{
+		if(i % 5 == 0 || i == 0)
+			map[i][0] = i;
+		else
+			map[i][0] = '|';
+	}
+	//create map boundary markers in X Axis
+	for(i = 0; i < mapSizeY; i++)
+	{
+		if(i % 5 == 0 || i == 0)
+		
+			map[0][i] = i;
+		else
+			map[0][i] = '-';
+			
+	}
+	map[0][0] == 'G';
 	//calculate initial velocity components	
 	ball.vx = ball.initialVelocity * cos( (double) ball.angle) / FRAMERATE;
 	ball.vy = ball.initialVelocity * sin( (double) ball.angle) / FRAMERATE;
@@ -139,7 +167,17 @@ void drawPhysicsSim()
 	{
 		for(int j = 0; j < mapSizeY; j++)
 		{
-			printf("%c", map[i][j]);
+			//X axis numbers
+			if(j == 0 && i % 5 == 0)
+				printf("%d", map[i][j]);
+			//Y axis numbers
+			else if(i == 0 && j % 5 == 0)
+				printf("%d", map[i][j]);
+			//print (0,0)
+			else if(i == 0 && j == 0)
+				printf("%c", map[i][j]);
+			else
+				printf("%c", map[i][j]);
 		}
 		printf("\n");
 	}
@@ -171,7 +209,8 @@ void updatePhysicsSim()
 	ball.y += ball.vy;
 
 	//clear old ball position
-	if(ball.x != ball.prevX || ball.y != ball.prevY) setMapXY(ball.prevX, ball.prevY, '.');
+	if(ball.x != ball.prevX || ball.y != ball.prevY)
+		setMapXY(ball.prevX, ball.prevY, '.');
 	
 } void userMoveBall() {
 	switch(userInput)
