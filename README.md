@@ -1,12 +1,14 @@
------ ASCII-based terminal physics emulator -----
+## ASCII-based terminal physics emulator
 
-Currently implementing: 
+#### Currently implementing: 
 
--graphics and physics objects
--2D cannon ballistics
+* graphics and physics objects
+* 2D cannon ballistics
+* removing termios library to increase support
 
-Future implementations: 
+#### Future implementations:
+* Adjustable cannon angle
 
--[redacted]
+
 
 

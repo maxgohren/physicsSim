@@ -4,12 +4,22 @@
 #include <math.h>
 #include <termios.h>
 
+
 // x y coord system is wack with row-col formula for arrays, works with this ratio
 #define mapSizeY 70
 #define mapSizeX 40
-#define FRAMERATE 60
+#define FRAMERATE 30
 
 struct termios oldt,newt;
+
+struct my_termios {
+    unsigned short c_iflag;    /* input mode flags */
+    unsigned short c_oflag;    /* output mode flags */
+    unsigned short c_cflag;    /* control mode flags */
+    unsigned short c_lflag;    /* local mode flags */
+    unsigned char c_line;      /* line discipline */
+    unsigned char c_cc[8];     /* control characters */
+};
 
 struct Ball {	
 	double x;
@@ -23,6 +33,19 @@ struct Ball {
 	int collision;
 };
 
+struct Ball ball = {
+					0,  // x
+					0,  // y
+					0,  // prevX
+					0,  // prevY
+					0,  // x velocity 
+					0,  // y velocity
+					20, // init. velocity
+					45, // angle
+					0};
+
+
+
 char userInput = -1; 
 char menuInput = -1;
 char ballInput = 0;
@@ -30,9 +53,10 @@ char ballInput = 0;
 char map[mapSizeX][mapSizeY]; 
 int simulationTime = 0;
 double gravity = -9.81;
+int count = 0;
 
 void setNonCanonicalMode();
-void setCanonicalMode();
+void resetTerminalMode();
 void drawMenu();
 void clearScreen();
 void drawPhysicsSim();
@@ -42,15 +66,10 @@ void userMoveBall();
 int isOutOfBounds();
 void setMapXY(double x, double y, char c);
 void setBallPos(double x,double y);
+void init();
 
-
-
-
-struct Ball ball = {1, 1, 0, 0, 0, 0, 20, 45, 0};
 int main()
 {
-	int i = 0;
-	int count = 0;
 	init(); 
 
 	//menu screen
@@ -85,7 +104,7 @@ int main()
 		}
 	}
 	clearScreen();
-	setCanonicalMode();
+	resetTerminalMode();
 	return 0;
 }
 
@@ -201,15 +220,14 @@ void drawPhysicsSim()
 	}
 	
 	printf("Simulation Time: %d seconds \n", simulationTime);	
-	printf("Framerate: %d FPS \n", FRAMERATE);
+	printf("Framerate: %d FPS , Current Frame: %d\n", FRAMERATE, count);
 	
 	printf("Cannon Angle: %g degrees\n", ball.angle);
 	printf("Cannon Velocity: %g m/s\n", ball.initialVelocity);
 	printf("Ball Position (x,y) = (%g m, %g m)\n", ball.x, ball.y);
 	printf("Ball Velocity (x,y) = (%g m/s, %g m/s)\n", ball.y, ball.vy);
-	printf("Gravity: %g m/s\n", gravity);
-	
-	printf("\n");
+	printf("Gravity: %g m/s\n\n", gravity);
+	printf("Press 'q' to Quit!\n");
 }
 
 void updatePhysicsSim()
@@ -219,7 +237,7 @@ void updatePhysicsSim()
 	else
 	{
 	//update velocities due to accelerations
-	ball.vx; // + air resistance
+	//ball.vx; // + air resistance
 	ball.vy += gravity  / (FRAMERATE * FRAMERATE);
 
 	//store previous location to clear
@@ -259,6 +277,7 @@ void userMoveBall() {
 	}	
 	userInput = -1;
 }
+
 void setNonCanonicalMode()
 {
 	// Save old terminal settings
@@ -273,7 +292,7 @@ void setNonCanonicalMode()
 }
 
 
-void setCanonicalMode()
+void resetTerminalMode()
 {
 	// Restore old terminal settings
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
